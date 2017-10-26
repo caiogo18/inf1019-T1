@@ -1,0 +1,2 @@
+Exec programa 1 1 1
+Exec programa 2 5 4
