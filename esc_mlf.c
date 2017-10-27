@@ -51,9 +51,7 @@ int limpaEntrada( char* line, char ***exec_args );
 int stringToInt( char* string );
 
 int setSemValue( int semId );
-void W4IOHandler(int signal);
-void trataalarme(int signal);
-void tratafim(int signal);
+void sig_handler(int signal);
 void delSemValue( int semId );
 void printa(PR *v[],int i);
 int semaforoP( int semId );
@@ -65,7 +63,7 @@ PR *VPR[N];
 IO *VIO[N];
 PR *temp;
 struct timeval aux_tv;
-int pos;
+int pos,sit;
 int corr_fila=0;
 int corr_deltat=0;
 int main (void)
@@ -74,10 +72,10 @@ int main (void)
 	int i, j;
 	int semId;
 	int deltat=2;
-	int time=0;
 	char command[30];
 	char** command_args ;
 	int numero_de_argumentos=0;
+	int esperar=0;
 	struct timeval corr_tv;
 	//cria o vetor de vetores de strings
 	exec_args = ( char *** ) malloc( MAX_PROGRAMS * sizeof( char ** ) );
@@ -115,17 +113,12 @@ int main (void)
 		printf( "esc.c Erro: Nao foi possivel instalar rotina de atendimento.\n" );
 		exit( 1 );
 	}
-	if( signal( SIGALRM, trataalarme ) == SIG_ERR )
+	if( signal( SIGUSR2, sig_handler ) == SIG_ERR )
 	{
 		printf( "esc.c Erro: Nao foi possivel instalar rotina de atendimento.\n" );
 		exit( 1 );
 	}
-	if( signal( SIGUSR2, tratafim ) == SIG_ERR )
-	{
-		printf( "esc.c Erro: Nao foi possivel instalar rotina de atendimento.\n" );
-		exit( 1 );
-	}
-	if( signal( SIGUSR1, W4IOHandler ) == SIG_ERR )
+	if( signal( SIGUSR1, sig_handler) == SIG_ERR )
 	{
 		printf( "esc.c Erro: Nao foi possivel instalar rotina de atendimento.\n" );
 		exit( 1 );
@@ -160,7 +153,10 @@ int main (void)
 	
 
 	
- 	num_new_items = 0;
+ 		
+	while(esperar<10){
+	sleep(1);	
+	num_new_items = 0;
 	//area critica entre interpretador e escalonador
 	semaforoP( semId );
 	//transforma o grande vetor de char da memoria compartilhada para um vetor de vetores strings
@@ -174,6 +170,9 @@ int main (void)
 		for(j=0;j<MAX_ARGS &&exec_args[i][j][0]!='\0';j++){
 				numero_de_argumentos++;;
 			}
+		if(numero_de_argumentos<=1){ i++;
+		sleep(1);}
+		else{
 		pid_t pid  = fork( );
 		
 		if( pid < 0 )
@@ -218,17 +217,17 @@ int main (void)
 			 * Pausa o programa recem-criado.
 		
 			 */
+		}
 		
-	}	
-	for(EVER){
+	}
+		sit=0;
 		if(!fila_vazia(F[0])){
 			pos=fila_retira(F[0]);
 			corr_fila=0;
 			corr_deltat=deltat;
 			printf( "SIGCONT -  %d  -  quantum - %d \n", VPR[pos]->pid,deltat);
 			kill( VPR[pos]->pid, SIGCONT );
-			alarm(deltat);
-			pause();
+			sleep(deltat);
 			
 		}
 		else if(!fila_vazia(F[1])){
@@ -237,8 +236,7 @@ int main (void)
 			corr_deltat=2*deltat;
 			printf( "SIGCONT -  %d  -  quantum - %d \n", VPR[pos]->pid,2*deltat);
 			kill( VPR[pos]->pid, SIGCONT );
-			alarm(2*deltat);
-			pause();
+			sleep(2*deltat);
 		}
 		else if(!fila_vazia(F[2])){
 			pos=fila_retira(F[2]);
@@ -246,28 +244,59 @@ int main (void)
 			corr_deltat=4*deltat;
 			printf( "SIGCONT -  %d  -  quantum - %d \n", VPR[pos]->pid,4*deltat);
 			kill( VPR[pos]->pid, SIGCONT );
-			alarm(4*deltat);
-			pause();
+			sleep(4*deltat);
 		}
-		else if(!fila_vazia(FIO)) time=0;
-		else break;
+		else if(!fila_vazia(FIO)) sit=3;
+		else{ 
+			esperar++;
+			printf("Nenhum processo esperando..\n");
+			sleep(2);
+			continue;
+		}
 		gettimeofday (&corr_tv, NULL);
-		if(!fila_vazia(FIO)){
-			while(!fila_vazia(FIO)){
-				j=fila_obtem(FIO);
-				if(corr_tv.tv_sec-VIO[j]->sec>=3){
+		while(!fila_vazia(FIO)){
+			j=fila_obtem(FIO);
+			if(corr_tv.tv_sec-VIO[j]->sec>=3){
 				j=fila_retira(FIO);
 				fila_insere(F[VIO[j]->num_fila],j);
+				printf("Processo %d voltou para FILA %d\n",VPR[pos]->pid,VIO[j]->num_fila);
 				free(VIO[j]);
-				time++;
-				}
-				else break;
-			}	
+			}
+			else{
+				break;
+				printf("descansar..\n");
+			}
+		}	
+		//se recebeu o sinal USR1(W4IO)
+		if(sit==1){
+			kill( VPR[pos]->pid, SIGSTOP );
+			printf("Processo %d entrou na FILA de IO\n",VPR[pos]->pid);
+			VPR[pos]->rajada_corrente++;
+			IO *temp_io=(IO *)malloc(sizeof(IO));
+			corr_fila=corr_fila-1;
+			if(corr_fila<0) corr_fila=0;
+			temp_io->num_fila=corr_fila;
+			gettimeofday (&aux_tv, NULL);
+			temp_io->sec=aux_tv.tv_sec;
+			VIO[pos]=temp_io;
+			fila_insere(FIO,pos);
 		}
-		kill( VPR[pos]->pid, SIGSTOP );
-		corr_fila++;
-		if(corr_fila>2) corr_fila=2;
-		fila_insere(F[corr_fila],pos);
+		//se recebeu o sinal USR2(filho terminou)
+		else if(sit==2){
+			printf("Morri!%d\n",VPR[pos]->pid);
+			kill( VPR[pos]->pid, SIGKILL );
+			free(VPR[pos]);
+		}
+		//nenhum processo para escalonar
+		else if(sit==3);
+		//nao recebeu sinal
+		else{
+			kill( VPR[pos]->pid, SIGSTOP );
+			corr_fila++;
+			if(corr_fila>2) corr_fila=2;
+			fila_insere(F[corr_fila],pos);
+		}
+		
 		
 	}
 	return 0;
@@ -294,27 +323,18 @@ void intHandler( int signal )
 	shmctl( shm, IPC_RMID, 0 );
 	exit( 0 );
 }
-void W4IOHandler(int signal){
-	kill( VPR[pos]->pid, SIGSTOP );
-	printf("Processo %d entrou na FILA de IO\n",VPR[pos]->pid);
-	VPR[pos]->rajada_corrente++;
-	IO *temp_io=(IO *)malloc(sizeof(IO));
-	corr_fila=corr_fila-1;
-	if(corr_fila<0) corr_fila=0;
-	temp_io->num_fila=corr_fila;
-	gettimeofday (&aux_tv, NULL);
-	temp_io->sec=aux_tv.tv_sec;
-	VIO[pos]=temp_io;
-	fila_insere(FIO,pos);
-	return;
-}
-void trataalarme(int signal){
-	
-}
-void tratafim(int signal){
-	printf("Morri!%d",VPR[pos]->pid);
-	kill( VPR[pos]->pid, SIGKILL );
-	free(VPR[pos]);
+
+void sig_handler(int signal){
+        switch(signal) {
+                case SIGUSR1 :
+                        sit=1;
+                        break;
+                case SIGUSR2 :
+                        sit=2;
+                        break;
+                default :
+                        printf("SIGNAL %d\n", signal);
+	}
 }
 int limpaEntrada( char* buffer, char ***exec_args )
 {
