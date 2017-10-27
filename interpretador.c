@@ -32,8 +32,7 @@ int semaforoV( int semId );
 
 int main (void)
 { 
-	char  url[] = "exec.txt";
-	FILE *Arquivo;
+	
 	char  line[40];
 
 	char *items;
@@ -50,12 +49,7 @@ int main (void)
 		exit( 1 );
 	}
 
-	Arquivo  = fopen( url, "r" );
-	if( Arquivo == NULL )
-	{
-	    printf("interpretador.c: Nao foi possivel abrir o arquivo.\n");
-		exit( 1 );
-	}
+	
 //cria o semaforo
 	semId = semget( SEM, 1, 0666 | IPC_CREAT );
 	if( semId == -1 )
@@ -70,7 +64,7 @@ int main (void)
 		exit( 1 );
 	}
 	//cria a memoria compartilhada alocando a memoria 
-	shm_rr   = shmget( SHM, 100 * sizeof( int ), IPC_CREAT | S_IRUSR | S_IWUSR );
+	shm_rr   = shmget( SHM, 100 * sizeof( int ),  S_IRUSR | S_IWUSR );
 	if( shm_rr == -1 )
 	{
 		printf("interpretador.c: Nao foi possivel alocar memoria compartilhada.\n");
@@ -84,23 +78,24 @@ int main (void)
 		exit( 1 );
 	}
 	//grava na memoria compartilhada como um grande vetor de char
-	while( fgets( line, sizeof( line ), Arquivo ) != NULL )
+	while( 1 )
 	{
+		scanf(" %[^\n]s",line);
 		semaforoP( semId );
 		{
 			obtemArgs( line, items, n );
-			
+			printf("%s\n",line);
 			strcat( ( char * ) p, items );
 			strcat( ( char * ) p, "\n" );
 			strcat( ( char * ) p, "\0" );
 		}
 		semaforoV( semId );
+		sleep(1);
 		
 	}
 
 	free( items );
 
-	fclose(Arquivo);
 	
 	return 0; 
 }

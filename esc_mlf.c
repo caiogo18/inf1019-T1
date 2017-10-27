@@ -69,7 +69,7 @@ int corr_deltat=0;
 int main (void)
 { 
 	int num_new_items=0;
-	int i, j;
+	int i, j,progs;
 	int semId;
 	int deltat=2;
 	char command[30];
@@ -123,8 +123,8 @@ int main (void)
 		printf( "esc.c Erro: Nao foi possivel instalar rotina de atendimento.\n" );
 		exit( 1 );
 	}
-	//seta a memoria compartilhada(ja foi criada pelo interpretador)
-	shm = shmget( SHM, 100 * sizeof( int ), S_IRUSR | S_IWUSR );
+	//cria a memoria compartilhada
+	shm = shmget( SHM, 100 * sizeof( int ), IPC_CREAT | S_IRUSR | S_IWUSR);
 	if( shm == -1 )
 	{
 		printf("esc.c Erro: Nao foi possivel alocar memoria compartilhada\n");
@@ -150,55 +150,53 @@ int main (void)
 		printf("esc.c: Nao foi possivel operar o semaforo.\n");
 		exit( 1 );
 	}
-	
-
-	
- 		
-	while(esperar<10){
-	sleep(1);	
-	num_new_items = 0;
-	//area critica entre interpretador e escalonador
-	semaforoP( semId );
-	//transforma o grande vetor de char da memoria compartilhada para um vetor de vetores strings
-	num_new_items=limpaEntrada( ( char * ) p, exec_args );
 	memset( p, 0, strlen( ( char * ) p ) + 1 );
 	p[0] = '\0';
-	semaforoV( semId );
-	i=0;
-	while(i<num_new_items){	
-		numero_de_argumentos=0;
-		for(j=0;j<MAX_ARGS &&exec_args[i][j][0]!='\0';j++){
+	pid_t pid  = fork( );
+	if( pid == 0 ) execl("./interpretador","interpretador",NULL);
+	progs=0;
+	while(esperar<10&&progs<100){
+		num_new_items = 0;
+		//area critica entre interpretador e escalonador
+		semaforoP( semId );
+		//transforma o grande vetor de char da memoria compartilhada para um vetor de vetores strings
+		num_new_items=limpaEntrada( ( char * ) p, exec_args );
+		memset( p, 0, strlen( ( char * ) p ) + 1 );
+		p[0] = '\0';
+		semaforoV( semId );
+		i=0;
+		while(i<num_new_items){	
+			numero_de_argumentos=0;
+			for(j=0;j<MAX_ARGS &&exec_args[i][j][0]!='\0';j++){
 				numero_de_argumentos++;;
 			}
-		if(numero_de_argumentos<=1){ i++;
-		sleep(1);}
-		else{
-		pid_t pid  = fork( );
+			if(numero_de_argumentos<=1)printf("argumentos insuficientes\n");
+			else{
+				pid_t pid  = fork( );
 		
-		if( pid < 0 )
-		{
-			printf( "escalonador.c Erro: Nao foi possivel criar novo processo.\n" ); 
-		    exit( 2 ); 
-		}
+			if( pid < 0 )
+			{
+				printf( "escalonador.c Erro: Nao foi possivel criar novo processo.\n" ); 
+		  		  exit( 2 ); 
+			}
 		
-		else if( pid >0 )
-		{	
+			else if( pid >0 )
+			{	
+				esperar=0;
 					
-			temp= ( PR * )malloc( sizeof( PR ) );
-			temp->rajada_corrente=0;	
-			temp->rajadas=malloc((numero_de_argumentos-1)*sizeof(int));
-			for(j=1;j<numero_de_argumentos;j++){
+				temp= ( PR * )malloc( sizeof( PR ) );
+				temp->rajada_corrente=0;	
+				temp->rajadas=malloc((numero_de_argumentos-1)*sizeof(int));
+				for(j=1;j<numero_de_argumentos;j++){
 				temp->rajadas[j-1]=stringToInt(exec_args[i][j]);
 			}
 			temp->pid=pid;
-			VPR[i]=temp;
-			fila_insere(F[0],i);
-			
-				
-		kill( VPR[i]->pid, SIGSTOP );
-		printf("SIGSTOP %d\n", VPR[i]->pid);
-		i++;
-		sleep(1);
+			VPR[progs]=temp;
+			fila_insere(F[0],progs);	
+			kill( VPR[progs]->pid, SIGSTOP );
+			printf("SIGSTOP %d\n", VPR[progs]->pid);
+			i++;
+			progs++;
 			
 		}
 		else{
@@ -265,6 +263,7 @@ int main (void)
 			else{
 				break;
 				printf("descansar..\n");
+				sleep(1);
 			}
 		}	
 		//se recebeu o sinal USR1(W4IO)
