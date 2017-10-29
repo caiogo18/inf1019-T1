@@ -3,11 +3,12 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <sys/wait.h> 
+#include <sys/wait.h>
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
 #include "Fila.h"
+#include "aux.h"
 #define SHM 8550
 
 #define SEM 7300
@@ -19,16 +20,16 @@
 #define FALSE 0
 #define EVER ; ;
 #define N 100
-union semun 
-{ 
-	int              val; 
-	unsigned short  *array; 
-	struct semid_ds *buf; 
+union semun
+{
+	int              val;
+	unsigned short  *array;
+	struct semid_ds *buf;
 };
 
 typedef struct processo
 {
-	int  *rajadas;	
+	int  *rajadas;
 	pid_t pid;
 	int rajada_corrente;
 }PR ;
@@ -40,7 +41,8 @@ typedef struct IO_
 
 
 
-int shm, *p;
+int shm;
+char* p;
 
 char ***exec_args;
 
@@ -67,7 +69,7 @@ int pos,sit;
 int corr_fila=0;
 int corr_deltat=0;
 int main (void)
-{ 
+{
 	int num_new_items=0;
 	int i, j,progs;
 	int semId;
@@ -77,6 +79,7 @@ int main (void)
 	int numero_de_argumentos=0;
 	int esperar=0;
 	struct timeval corr_tv;
+	printf("Inicializando Escalonador no processo: %d\n", getpid());
 	//cria o vetor de vetores de strings
 	exec_args = ( char *** ) malloc( MAX_PROGRAMS * sizeof( char ** ) );
 	FIO= fila_cria() ;
@@ -88,7 +91,7 @@ int main (void)
 		printf( "esc.c Erro: Nao foi possivel alocar memoria.\n" );
 		exit( 1 );
 	}
-	
+
 	for( i = 0; i < MAX_PROGRAMS; i++ )
 	{
 		exec_args[i] = ( char ** ) malloc( MAX_ARGS * sizeof(  char * ) );
@@ -124,15 +127,15 @@ int main (void)
 		exit( 1 );
 	}
 	//cria a memoria compartilhada
-	shm = shmget( SHM, 100 * sizeof( int ), IPC_CREAT | S_IRUSR | S_IWUSR);
+	shm = shmget( SHM, MSG_MAX_SIZE * sizeof( char ), IPC_CREAT | S_IRUSR | S_IWUSR);
 	if( shm == -1 )
 	{
 		printf("esc.c Erro: Nao foi possivel alocar memoria compartilhada\n");
 		exit( 1 );
 	}
 
-    p  = ( int * ) shmat( shm, 0, 0 );
-	if( ( long ) p == -1 )
+    p  = ( char * ) shmat( shm, 0, 0 );
+	if( p == NULL )
 	{
 		printf("esc.c: Nao foi possivel alocar memoria compartilhada\n");
 		exit( 1 );
@@ -143,8 +146,8 @@ int main (void)
 	{
 		printf("esc.c: Nao foi possivel criar o semaforo.\n");
 		exit( 1 );
-	}  
-	
+	}
+
 	if( setSemValue( semId ) == -1 )
 	{
 		printf("esc.c: Nao foi possivel operar o semaforo.\n");
@@ -152,10 +155,10 @@ int main (void)
 	}
 	memset( p, 0, strlen( ( char * ) p ) + 1 );
 	p[0] = '\0';
-	pid_t pid  = fork( );
-	if( pid == 0 ) execl("./interpretador","interpretador",NULL);
+	//pid_t pid  = fork( );
+	//if( pid == 0 ) execl("./interpretador","interpretador",NULL);
 	progs=0;
-	while(esperar<10&&progs<100){
+	while(1){//while(esperar<10&&progs<MSG_MAX_SIZE){
 		num_new_items = 0;
 		//area critica entre interpretador e escalonador
 		semaforoP( semId );
@@ -165,74 +168,82 @@ int main (void)
 		p[0] = '\0';
 		semaforoV( semId );
 		i=0;
-		while(i<num_new_items){	
+		while(i<num_new_items){
 			numero_de_argumentos=0;
 			for(j=0;j<MAX_ARGS &&exec_args[i][j][0]!='\0';j++){
 				numero_de_argumentos++;;
 			}
-			if(numero_de_argumentos<=1)printf("argumentos insuficientes\n");
+			if(numero_de_argumentos<=1){
+				printf("argumentos insuficientes\n");
+			}
 			else{
 				pid_t pid  = fork( );
-		
+
 			if( pid < 0 )
 			{
-				printf( "escalonador.c Erro: Nao foi possivel criar novo processo.\n" ); 
-		  		  exit( 2 ); 
+				printf( "escalonador.c Erro: Nao foi possivel criar novo processo.\n" );
+		  		  exit( 2 );
 			}
-		
+
 			else if( pid >0 )
-			{	
+			{
 				esperar=0;
-					
+
 				temp= ( PR * )malloc( sizeof( PR ) );
-				temp->rajada_corrente=0;	
+				temp->rajada_corrente=0;
 				temp->rajadas=malloc((numero_de_argumentos-1)*sizeof(int));
 				for(j=1;j<numero_de_argumentos;j++){
 				temp->rajadas[j-1]=stringToInt(exec_args[i][j]);
 			}
 			temp->pid=pid;
 			VPR[progs]=temp;
-			fila_insere(F[0],progs);	
+			fila_insere(F[0],progs);
 			kill( VPR[progs]->pid, SIGSTOP );
+			#ifdef DEBUG
 			printf("SIGSTOP %d\n", VPR[progs]->pid);
+			#endif
 			i++;
 			progs++;
-			
+
 		}
 		else{
-			
+
 			strcpy( command, "./" );
 			strcat( command, exec_args[i][0] );
 			command_args=(char **)malloc(sizeof(char *)*(numero_de_argumentos));
 			for(j=0;j<numero_de_argumentos;j++){
-				command_args[j]=exec_args[i][j]; 
+				command_args[j]=exec_args[i][j];
 			}
 			execv( command, command_args);
 		}
-		
-			
+
+
 			/*
 			 * Pausa o programa recem-criado.
-		
+
 			 */
 		}
-		
+
 	}
 		sit=0;
 		if(!fila_vazia(F[0])){
 			pos=fila_retira(F[0]);
 			corr_fila=0;
 			corr_deltat=deltat;
+			#ifdef DEBUG
 			printf( "SIGCONT -  %d  -  quantum - %d \n", VPR[pos]->pid,deltat);
+			#endif
 			kill( VPR[pos]->pid, SIGCONT );
 			sleep(deltat);
-			
+
 		}
 		else if(!fila_vazia(F[1])){
 			pos=fila_retira(F[1]);
 			corr_fila=1;
 			corr_deltat=2*deltat;
+			#ifdef DEBUG
 			printf( "SIGCONT -  %d  -  quantum - %d \n", VPR[pos]->pid,2*deltat);
+			#endif
 			kill( VPR[pos]->pid, SIGCONT );
 			sleep(2*deltat);
 		}
@@ -240,15 +251,19 @@ int main (void)
 			pos=fila_retira(F[2]);
 			corr_fila=2;
 			corr_deltat=4*deltat;
+			#ifdef DEBUG
 			printf( "SIGCONT -  %d  -  quantum - %d \n", VPR[pos]->pid,4*deltat);
+			#endif
 			kill( VPR[pos]->pid, SIGCONT );
 			sleep(4*deltat);
 		}
 		else if(!fila_vazia(FIO)) sit=3;
-		else{ 
+		else{
+			if(esperar%1000 == 0){
+				printf("Nenhum processo esperando..\n");
+			}
 			esperar++;
-			printf("Nenhum processo esperando..\n");
-			sleep(2);
+			ms_sleep(1);
 			continue;
 		}
 		gettimeofday (&corr_tv, NULL);
@@ -265,7 +280,7 @@ int main (void)
 				printf("descansar..\n");
 				sleep(1);
 			}
-		}	
+		}
 		//se recebeu o sinal USR1(W4IO)
 		if(sit==1){
 			kill( VPR[pos]->pid, SIGSTOP );
@@ -282,7 +297,7 @@ int main (void)
 		}
 		//se recebeu o sinal USR2(filho terminou)
 		else if(sit==2){
-			printf("Morri!%d\n",VPR[pos]->pid);
+			printf("pid:%d  Morri!\n",VPR[pos]->pid);
 			kill( VPR[pos]->pid, SIGKILL );
 			free(VPR[pos]);
 		}
@@ -295,8 +310,6 @@ int main (void)
 			if(corr_fila>2) corr_fila=2;
 			fila_insere(F[corr_fila],pos);
 		}
-		
-		
 	}
 	return 0;
 }
@@ -306,7 +319,7 @@ int main (void)
 void intHandler( int signal )
 {
 	int i, j;
-	
+
 
 	for( i = 0; i < MAX_PROGRAMS; i++ )
 	{
@@ -377,53 +390,53 @@ int stringToInt( char* string )
 
 
 
-int setSemValue( int semId ) 
-{ 
-	union semun semUnion; 
+int setSemValue( int semId )
+{
+	union semun semUnion;
 
 	semUnion.val = 1;
 
-	return semctl( semId, 0, SETVAL, semUnion ); 
+	return semctl( semId, 0, SETVAL, semUnion );
 }
 
 
 
-void delSemValue( int semId ) 
-{ 
-	union semun semUnion; 
+void delSemValue( int semId )
+{
+	union semun semUnion;
 
-	semctl( semId, 0, IPC_RMID, semUnion ); 
+	semctl( semId, 0, IPC_RMID, semUnion );
 }
 
 
 
-int semaforoP( int semId ) 
-{ 
-	struct sembuf semB; 
-
-	semB.sem_num =  0; 
-	semB.sem_op  = -1; 
-	semB.sem_flg = SEM_UNDO; 
-
-	semop( semId, &semB, 1 );
-
-	return 0; 
-}
-
-void printa(PR *v[],int i){	
-	printf("pid : %d\n rajadas %d %d %d\n rajada atual: %d\n",VPR[i]->pid,VPR[i]->rajadas[0],VPR[0]->rajadas[1],VPR[i]->rajadas[2],VPR[i]->rajada_corrente);
-}
-
-
-int semaforoV(int semId) 
-{ 
+int semaforoP( int semId )
+{
 	struct sembuf semB;
 
-	semB.sem_num = 0; 
-	semB.sem_op  = 1; 
+	semB.sem_num =  0;
+	semB.sem_op  = -1;
 	semB.sem_flg = SEM_UNDO;
 
 	semop( semId, &semB, 1 );
 
-	return 0; 
+	return 0;
+}
+
+void printa(PR *v[],int i){
+	printf("pid : %d\n rajadas %d %d %d\n rajada atual: %d\n",VPR[i]->pid,VPR[i]->rajadas[0],VPR[0]->rajadas[1],VPR[i]->rajadas[2],VPR[i]->rajada_corrente);
+}
+
+
+int semaforoV(int semId)
+{
+	struct sembuf semB;
+
+	semB.sem_num = 0;
+	semB.sem_op  = 1;
+	semB.sem_flg = SEM_UNDO;
+
+	semop( semId, &semB, 1 );
+
+	return 0;
 }

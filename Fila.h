@@ -1,3 +1,6 @@
+#ifndef FILA_H
+#define FILA_H
+
 #include <stdio.h>
 #include <stdlib.h>
 struct node{
@@ -18,3 +21,5 @@ int fila_retira (Fila* f);
 int fila_obtem (Fila* f);
 int fila_vazia (Fila* f);
 void fila_libera (Fila* f);
+
+#endif

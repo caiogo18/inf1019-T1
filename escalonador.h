@@ -1,9 +1,12 @@
+#ifndef ESCALONADOR_H
+#define ESCALONADOR_H
+
 #include <sys/sem.h>
 #include <sys/shm.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <sys/wait.h> 
+#include <sys/wait.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,15 +23,15 @@
 #define FALSE 0
 #define EVER ; ;
 #define N 100
-union semun 
-{ 
-	int              val; 
-	unsigned short  *array; 
-	struct semid_ds *buf; 
+union semun
+{
+	int              val;
+	unsigned short  *array;
+	struct semid_ds *buf;
 };
 
 typedef struct processo
-{	
+{
 	int pid;
 	int  *rajadas;
 	int rajada_corrente;
@@ -67,3 +70,5 @@ Fila *FIO ;
 PR *temp;
 int corr_fila=0;
 int corr_deltat=0;
+
+#endif
