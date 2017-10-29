@@ -272,7 +272,7 @@ int main (void)
 			if(corr_tv.tv_sec-VIO[j]->sec>=3){
 				j=fila_retira(FIO);
 				fila_insere(F[VIO[j]->num_fila],j);
-				printf("Processo %d voltou para FILA %d\n",VPR[pos]->pid,VIO[j]->num_fila);
+				printf("Processo %d voltou para FILA %d\n",VPR[j]->pid,VIO[j]->num_fila);
 				free(VIO[j]);
 			}
 			else{
