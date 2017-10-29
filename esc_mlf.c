@@ -134,7 +134,7 @@ int main (void)
 		exit( 1 );
 	}
 
-    p  = ( char * ) shmat( shm, 0, 0 );
+    	p  = ( char * ) shmat( shm, 0, 0 );
 	if( p == NULL )
 	{
 		printf("esc.c: Nao foi possivel alocar memoria compartilhada\n");
