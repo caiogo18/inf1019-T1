@@ -179,52 +179,45 @@ int main (void)
 			else{
 				pid_t pid  = fork( );
 
-			if( pid < 0 )
-			{
-				printf( "escalonador.c Erro: Nao foi possivel criar novo processo.\n" );
-		  		  exit( 2 );
+				if( pid < 0 )
+				{
+					printf( "escalonador.c Erro: Nao foi possivel criar novo processo.\n" );
+			  		  exit( 2 );
+				}
+
+				else if( pid >0 )
+				{
+					temp= ( PR * )malloc( sizeof( PR ) );
+					temp->rajada_corrente=0;
+					temp->rajadas=malloc((numero_de_argumentos-1)*sizeof(int));
+					for(j=1;j<numero_de_argumentos;j++){
+						temp->rajadas[j-1]=stringToInt(exec_args[i][j]);
+					}
+					temp->pid=pid;
+					VPR[progs]=temp;
+					fila_insere(F[0],progs);
+					kill( VPR[progs]->pid, SIGSTOP );
+					printf("Processo %d adicionado\n", VPR[progs]->pid);
+					i++;
+					progs++;
+
+				}
+				else{
+					strcpy( command, "./" );
+					strcat( command, exec_args[i][0] );
+					command_args=(char **)malloc(sizeof(char *)*(numero_de_argumentos));
+					for(j=0;j<numero_de_argumentos;j++){
+						command_args[j]=exec_args[i][j];
+					}
+					execv( command, command_args);
+				}
+					/*
+					 * Pausa o programa recem-criado.
+
+					 */
 			}
 
-			else if( pid >0 )
-			{
-				esperar=0;
-
-				temp= ( PR * )malloc( sizeof( PR ) );
-				temp->rajada_corrente=0;
-				temp->rajadas=malloc((numero_de_argumentos-1)*sizeof(int));
-				for(j=1;j<numero_de_argumentos;j++){
-				temp->rajadas[j-1]=stringToInt(exec_args[i][j]);
-			}
-			temp->pid=pid;
-			VPR[progs]=temp;
-			fila_insere(F[0],progs);
-			kill( VPR[progs]->pid, SIGSTOP );
-			#ifdef DEBUG
-			printf("SIGSTOP %d\n", VPR[progs]->pid);
-			#endif
-			i++;
-			progs++;
-
 		}
-		else{
-
-			strcpy( command, "./" );
-			strcat( command, exec_args[i][0] );
-			command_args=(char **)malloc(sizeof(char *)*(numero_de_argumentos));
-			for(j=0;j<numero_de_argumentos;j++){
-				command_args[j]=exec_args[i][j];
-			}
-			execv( command, command_args);
-		}
-
-
-			/*
-			 * Pausa o programa recem-criado.
-
-			 */
-		}
-
-	}
 		sit=0;
 		if(!fila_vazia(F[0])){
 			pos=fila_retira(F[0]);
