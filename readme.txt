@@ -1,6 +1,6 @@
 para compilar
-gcc -Wall - o esc esc_mlf.c Fila.c aux.c
-gcc -Wall - o interpretador interpretador.c
+gcc -Wall - o esc esc_mlf.c Fila.c auxiliar.c
+gcc -Wall - o interpretador interpretador.c auxiliar.c
 gcc -Wall - o programa programa.c
 
 Ou
