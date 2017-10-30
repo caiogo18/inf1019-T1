@@ -1,4 +1,4 @@
-#include "aux.h"
+#include "auxiliar.h"
 
 #include <unistd.h>
 #include <time.h>
