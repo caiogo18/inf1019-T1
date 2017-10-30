@@ -1,0 +1,114 @@
+para compilar
+gcc -Wall - o esc esc_mlf.c Fila.c aux.c
+gcc -Wall - o int interpretador.c
+gcc -Wall - o programa programa.c
+
+Ou
+
+sh compiler.sh
+
+-------
+
+para executar, abra 2 terminais.
+
+Chamaremos um terminal de int e esc.
+
+No terminal esc:
+./esc
+
+No terminal int:
+./int
+e escreva os programas que voce quer adcionar no formato abaixo
+Exec programa x x x
+
+==========
+Explicação da comunicação entre os processos:
+O interpretador se comunica com o escalonador atraves de memoria compartilhada e usa semaforo na regiao critica de leitura e escrita entre esses dois programas
+O escalonador cria os processos filhos(usa exec para virar o programa usuario) e se comunica com os filhos atraves de sinais(SIGSTOP, SIGCONT,SIGUSR1,SIGUSR2)
+
+==========
+Exemplo
+terminal interpretador:
+Inicializando o Intepretador no pid: 2050
+Exec programa 12 6 2
+Exec programa 4 8 4
+Exec programa 2 2 2 2 2
+
+terminal escalonador:
+
+Inicializando Escalonador no processo: 2051
+Nenhum processo esperando..
+Nenhum processo esperando..
+Nenhum processo esperando..
+Nenhum processo esperando..
+Processo 2052 adicionado
+pid:2052  tempo:1 de 12
+pid:2052  tempo:2 de 12
+pid:2052  tempo:3 de 12
+pid:2052  tempo:4 de 12
+pid:2052  tempo:5 de 12
+pid:2052  tempo:6 de 12
+pid:2052  tempo:7 de 12
+pid:2052  tempo:8 de 12
+pid:2052  tempo:9 de 12
+pid:2052  tempo:10 de 12
+pid:2052  tempo:11 de 12
+pid:2052  tempo:12 de 12
+Processo 2052 entrou na FILA de IO
+Processo 2053 adicionado
+pid:2053  tempo:1 de 4
+pid:2053  tempo:2 de 4
+pid:2053  tempo:3 de 4
+pid:2053  tempo:4 de 4
+Processo 2052 voltou para FILA 1
+Processo 2053 entrou na FILA de IO
+pid:2052  tempo:1 de 6
+pid:2052  tempo:2 de 6
+pid:2052  tempo:3 de 6
+pid:2052  tempo:4 de 6
+Processo 2053 voltou para FILA 0
+Processo 2054 adicionado
+pid:2053  tempo:1 de 8
+pid:2053  tempo:2 de 8
+pid:2054  tempo:1 de 2
+pid:2054  tempo:2 de 2
+pid:2053  tempo:3 de 8
+pid:2053  tempo:4 de 8
+pid:2053  tempo:5 de 8
+pid:2053  tempo:6 de 8
+Processo 2054 entrou na FILA de IO
+pid:2052  tempo:5 de 6
+pid:2052  tempo:6 de 6
+Processo 2052 entrou na FILA de IO
+pid:2053  tempo:7 de 8
+pid:2053  tempo:8 de 8
+Processo 2054 voltou para FILA 0
+Processo 2053 entrou na FILA de IO
+pid:2054  tempo:1 de 2
+pid:2054  tempo:2 de 2
+Processo 2052 voltou para FILA 1
+pid:2052  tempo:1 de 2
+pid:2052  tempo:2 de 2
+Processo 2053 voltou para FILA 1
+pid:2052  Morri!
+Processo 2054 entrou na FILA de IO
+pid:2053  tempo:1 de 4
+pid:2053  tempo:2 de 4
+pid:2053  tempo:3 de 4
+pid:2053  tempo:4 de 4
+Processo 2054 voltou para FILA 0
+pid:2054  tempo:1 de 2
+pid:2054  tempo:2 de 2
+Processo 2054 entrou na FILA de IO
+pid:2053  Morri!
+Processo 2054 voltou para FILA 0
+pid:2054  tempo:1 de 2
+pid:2054  tempo:2 de 2
+Processo 2054 entrou na FILA de IO
+Processo 2054 voltou para FILA 0
+pid:2054  tempo:1 de 2
+pid:2054  tempo:2 de 2
+pid:2054  Morri!
+Nenhum processo esperando..
+Nenhum processo esperando..
+

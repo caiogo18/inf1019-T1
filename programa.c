@@ -20,7 +20,10 @@ int main( int argc, char *argv[ ] )
 		printf("pid:%d  tempo:%d de %d\n",getpid(),j+1,rajada);
 		sleep(1);
        	}
-	if(i<argc-1) kill(getppid(),SIGUSR1);
+	if(i<argc-1){ 
+		kill(getppid(),SIGUSR1);
+		raise(SIGSTOP);
+	}
    }
     kill(getppid(),SIGUSR2);
     return 0;

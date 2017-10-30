@@ -168,7 +168,7 @@ int main (void)
 		p[0] = '\0';
 		semaforoV( semId );
 		i=0;
-		while(i<num_new_items){
+		if(num_new_items>0){
 			numero_de_argumentos=0;
 			for(j=0;j<MAX_ARGS &&exec_args[i][j][0]!='\0';j++){
 				numero_de_argumentos++;;
@@ -213,7 +213,6 @@ int main (void)
 				}
 					/*
 					 * Pausa o programa recem-criado.
-
 					 */
 			}
 
@@ -276,7 +275,6 @@ int main (void)
 		}
 		//se recebeu o sinal USR1(W4IO)
 		if(sit==1){
-			kill( VPR[pos]->pid, SIGSTOP );
 			printf("Processo %d entrou na FILA de IO\n",VPR[pos]->pid);
 			VPR[pos]->rajada_corrente++;
 			IO *temp_io=(IO *)malloc(sizeof(IO));
