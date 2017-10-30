@@ -14,7 +14,7 @@ sh compiler.sh
 
 para executar, abra 2 terminais.
 
-Chamaremos um terminal de int e esc.
+Chamaremos os terminais de int e esc.
 
 No terminal esc:
 ./esc
