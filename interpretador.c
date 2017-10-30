@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <string.h>
-#include "aux.h"
+#include "auxiliar.h"
 
 #define SHM 8550
 
