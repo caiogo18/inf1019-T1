@@ -21,7 +21,7 @@ No terminal esc:
 
 No terminal int:
 ./int
-e escreva os programas que voce quer adcionar no formato abaixo
+e escreva os programas que voce quer adicionar no formato abaixo
 Exec programa x x x
 
 ==========
